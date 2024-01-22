@@ -19,8 +19,8 @@ from schnapsen.alternative_engines.twenty_four_card_schnapsen import TwentyFourS
 # Project Intelligent System Parameters
 # for prj-baseline and prj-test
 RDEEP_SAMPLES = 16
-RDEEP_DEPTH = 6
-RDEEP_GAMES = 100   #FIXME customize
+RDEEP_DEPTH = 4     # 1000 runs to get 50%. With >4 it take a lot more.
+RDEEP_GAMES = 1000
 RDEEP_BOT1_SEED = 4564654644
 RDEEP_BOT2_SEED = 123123123
 
@@ -117,7 +117,8 @@ def rdeep_game() -> None:
             print(f"won {wins} out of {game_number}")
 
 @main.command()
-def prj_baseline() -> None:
+@click.option('--games', default=RDEEP_GAMES, help="Number of games")
+def prj_baseline(games) -> None:
     """
     Run RDEEP_GAMES games with two RDeep bots.
     At every new game the starting position is reversed.
@@ -135,7 +136,7 @@ def prj_baseline() -> None:
                     depth=RDEEP_DEPTH,
                     rand=random.Random(RDEEP_BOT2_SEED))
     wins = 0
-    amount = RDEEP_GAMES
+    amount = games
     for game_number in range(1, amount + 1):
         if game_number % 2 == 0:
             bot1, bot2 = bot2, bot1
@@ -144,10 +145,10 @@ def prj_baseline() -> None:
             wins += 1
         if game_number % 10 == 0:
             ratio: float = wins / game_number
-            print(f"{ratio:.2f}% {wins}/{game_number}")
+            print(f"{ratio:.4f}% {wins}/{game_number}", flush=True)
 
     perc: float = (wins / game_number) * 100
-    print(f"FINAL: {perc:.2f}% won {wins} out of {game_number}")
+    print(f"FINAL: {perc:.4f}% won {wins} out of {game_number}", flush=True)
 
 # prj_baseline
 
@@ -181,10 +182,10 @@ def prj_test(prob) -> None:
             wins += 1
         if game_number % 10 == 0:
             ratio: float = wins / game_number
-            print(f"{ratio:.2f}% {wins}/{game_number}")
+            print(f"{ratio:.4f}% {wins}/{game_number}")
 
     perc: float = (wins / game_number) * 100
-    print(f"FINAL: RdeepBot {perc:.2f}% won {wins} out of {game_number}")
+    print(f"FINAL: RdeepBot {perc:.4f}% won {wins} out of {game_number}")
 
 # prj_test
 
@@ -223,7 +224,7 @@ def prj_probs(games) -> None:
 
         perc1: float = wins / game_number
         perc2: float = (game_number - wins) / game_number
-        print(f"{prob:.1f},{games},{wins},{games-wins},{perc1:.2f},{perc2:.2f}",
+        print(f"{prob:.1f},{games},{wins},{games-wins},{perc1:.4f},{perc2:.4f}",
               flush=True)
 
 # prj_probs

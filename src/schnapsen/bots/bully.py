@@ -142,18 +142,18 @@ class RdeepBullyBot(Bot):
         leader_bot: Bot
         follower_bot: Bot
 
-        dual_bot: DualBot = DualBot(bot1=BullyBot(rand=self.__rand),
-                                    bot2=RandBot(rand=self.__rand),
-                                    prob1=self._bully_prob)
+        # use less in order to have no chance to have BullyBot when prob is 0
+        bully: bool = self.__rand.random() < self._bully_prob
+        me_bot: Bot = BullyBot(rand=self.__rand) if bully else RandBot(rand=self.__rand)
 
         if leader_move:
             # we know what the other bot played
             leader_bot = FirstFixedMoveThenBaseBot(RandBot(rand=self.__rand), leader_move)
             # I am the follower
-            me = follower_bot = FirstFixedMoveThenBaseBot(dual_bot, my_move)
+            me = follower_bot = FirstFixedMoveThenBaseBot(me_bot, my_move)
         else:
             # I am the leader bot
-            me = leader_bot = FirstFixedMoveThenBaseBot(dual_bot, my_move)
+            me = leader_bot = FirstFixedMoveThenBaseBot(me_bot, my_move)
             # We assume the other bot just random
             follower_bot = RandBot(self.__rand)
 
@@ -170,6 +170,7 @@ class RdeepBullyBot(Bot):
         return heuristic
     # __evaluate
 
+#FIXME deprecated
 class DualBot(Bot):
     """
     A bot that choose its behaviour based on probability.
