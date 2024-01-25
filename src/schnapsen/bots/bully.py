@@ -100,6 +100,8 @@ class RdeepBullyBot(Bot):
         self.__depth = depth
         self.__rand = rand
         self._bully_prob: float = aggressiveness
+        self.bully_counter: int = 0  # number of times it uses BullyBot
+        self.rand_counter: int = 0  # number of times it uses RandBot
     # __init__
 
 
@@ -146,6 +148,13 @@ class RdeepBullyBot(Bot):
         bully: bool = self.__rand.random() < self._bully_prob
         me_bot: Bot = BullyBot(rand=self.__rand) if bully else RandBot(rand=self.__rand)
 
+        # update counters
+        if bully:
+            self.bully_counter += 1
+        else:
+            self.rand_counter += 1
+
+        # Simulation
         if leader_move:
             # we know what the other bot played
             leader_bot = FirstFixedMoveThenBaseBot(RandBot(rand=self.__rand), leader_move)
@@ -169,39 +178,4 @@ class RdeepBullyBot(Bot):
         heuristic = my_score / (my_score + opponent_score)
         return heuristic
     # __evaluate
-
-#FIXME deprecated
-class DualBot(Bot):
-    """
-    A bot that choose its behaviour based on probability.
-    It switches between two bots styles.
-    """
-
-    def __init__(self, bot1: Bot, bot2: Bot, prob1: float) -> None:
-        """
-        Create a new DualBot
-
-        :param bot1: the first bot style.
-        :param bot2: the second bot style.
-        :param prob1: the probability to choose bot1.
-        """
-        assert(0.0 <= prob1 <= 1.0)
-
-        super().__init__("DualBot")
-
-        self._bot1: Bot = bot1
-        self._bot2: Bot = bot2
-        self._prob1: float = prob1
-        self._rand: random.Random = random.Random(666999)
-    # __init__
-
-    def get_move(self, perspective: PlayerPerspective, leader_move: Optional[Move]) -> Move:
-        """
-        :return: Bot1 with prob1 probability
-        """
-
-        bot: Bot = self._bot1 if self._rand.random() <= self._prob1 else self._bot2
-        return bot.get_move(perspective=perspective, leader_move=leader_move)
-
-    # get_move
 

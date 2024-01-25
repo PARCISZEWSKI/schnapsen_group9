@@ -1,5 +1,6 @@
 import random
 import pathlib
+import time
 
 from typing import Optional
 
@@ -17,7 +18,6 @@ from schnapsen.alternative_engines.twenty_four_card_schnapsen import TwentyFourS
 
 
 # Project Intelligent System Parameters
-# for prj-baseline and prj-test
 RDEEP_SAMPLES = 16
 RDEEP_DEPTH = 4     # 1000 runs to get 50%. With >4 it take a lot more.
 RDEEP_GAMES = 1000
@@ -116,78 +116,6 @@ def rdeep_game() -> None:
         if game_number % 10 == 0:
             print(f"won {wins} out of {game_number}")
 
-@main.command()
-@click.option('--games', default=RDEEP_GAMES, help="Number of games")
-def prj_baseline(games) -> None:
-    """
-    Run RDEEP_GAMES games with two RDeep bots.
-    At every new game the starting position is reversed.
-    """
-
-    #FIXME how to calculate the STD? Is it necessary? It requires multiple runs
-    print("2 RDeep bots tournament")
-    bot1: Bot
-    bot2: Bot
-    engine = SchnapsenGamePlayEngine()
-    rdeep = bot1 = RdeepBot(num_samples=RDEEP_SAMPLES,
-                            depth=RDEEP_DEPTH,
-                            rand=random.Random(RDEEP_BOT1_SEED))
-    bot2 = RdeepBot(num_samples=RDEEP_SAMPLES,
-                    depth=RDEEP_DEPTH,
-                    rand=random.Random(RDEEP_BOT2_SEED))
-    wins = 0
-    amount = games
-    for game_number in range(1, amount + 1):
-        if game_number % 2 == 0:
-            bot1, bot2 = bot2, bot1
-        winner_id, _, _ = engine.play_game(bot1, bot2, random.Random(game_number))
-        if winner_id == rdeep:
-            wins += 1
-        if game_number % 10 == 0:
-            ratio: float = wins / game_number
-            print(f"{ratio:.4f}% {wins}/{game_number}", flush=True)
-
-    perc: float = (wins / game_number) * 100
-    print(f"FINAL: {perc:.4f}% won {wins} out of {game_number}", flush=True)
-
-# prj_baseline
-
-@main.command()
-@click.option('--prob', default=0.0, help="Aggressiveness")
-def prj_test(prob) -> None:
-    """
-    Run RDEEP_GAMES games with RdeepBot against RdeepBullyBot.
-    At every new game the starting position is reversed.
-    """
-
-    #FIXME how to calculate the STD? Is it necessary? It requires multiple runs
-    print("Rdeep vs RdeepBully")
-    bot1: Bot
-    bot2: Bot
-    engine = SchnapsenGamePlayEngine()
-    rdeep = bot1 = RdeepBot(num_samples=RDEEP_SAMPLES,
-                            depth=RDEEP_DEPTH,
-                            rand=random.Random(RDEEP_BOT1_SEED))
-    bot2 = RdeepBullyBot(num_samples=RDEEP_SAMPLES,
-                    depth=RDEEP_DEPTH,
-                    rand=random.Random(RDEEP_BOT2_SEED),
-                    aggressiveness=prob)
-    wins = 0
-    amount = RDEEP_GAMES
-    for game_number in range(1, amount + 1):
-        if game_number % 2 == 0:
-            bot1, bot2 = bot2, bot1
-        winner_id, _, _ = engine.play_game(bot1, bot2, random.Random(game_number))
-        if winner_id == rdeep:
-            wins += 1
-        if game_number % 10 == 0:
-            ratio: float = wins / game_number
-            print(f"{ratio:.4f}% {wins}/{game_number}")
-
-    perc: float = (wins / game_number) * 100
-    print(f"FINAL: RdeepBot {perc:.4f}% won {wins} out of {game_number}")
-
-# prj_test
 
 @main.command()
 @click.option('--games', default=RDEEP_GAMES, help="Number of games for each probability value")
@@ -196,25 +124,25 @@ def prj_probs(games) -> None:
     Run RDEEP_GAMES games with RdeepBot against RdeepBullyBot.
     At every new game the starting position is reversed.
 
-    It runs 10 round from 0.0 to 1.0 probability of aggressiveness.
+    It runs 0.0, 0.5, 1.0 probabilities.
+    The output on stdout is in CSV format.
     """
 
-    #FIXME how to calculate the STD? Is it necessary? It requires multiple runs
-
-    print("PROB,GAMES,RDEEP_WIN,BULLY_WIN,RDEEP_WIN_RATIO,BULLY_WIN_RATIO")
-    for i in range(0, 11):
-        prob: float = i * 0.1
+    print("PROB,GAMES,RDEEP_WIN,BULLY_WIN,RDEEP_WIN_RATIO,BULLY_WIN_RATIO,TOTAL_SECS,BULLY_CNT,RAND_CNT")
+    for prob in [0.0, 0.5, 1.0]:
         bot1: Bot
         bot2: Bot
         engine = SchnapsenGamePlayEngine()
         rdeep = bot1 = RdeepBot(num_samples=RDEEP_SAMPLES,
                                 depth=RDEEP_DEPTH,
                                 rand=random.Random(RDEEP_BOT1_SEED))
-        bot2 = RdeepBullyBot(num_samples=RDEEP_SAMPLES,
+        bully = bot2 = RdeepBullyBot(num_samples=RDEEP_SAMPLES,
                         depth=RDEEP_DEPTH,
                         rand=random.Random(RDEEP_BOT2_SEED),
                         aggressiveness=prob)
         wins = 0
+        tm_start: float = time.process_time()
+
         for game_number in range(1, games + 1):
             if game_number % 2 == 0:
                 bot1, bot2 = bot2, bot1
@@ -222,9 +150,13 @@ def prj_probs(games) -> None:
             if winner_id == rdeep:
                 wins += 1
 
+        tm_end: float = time.process_time()
         perc1: float = wins / game_number
-        perc2: float = (game_number - wins) / game_number
-        print(f"{prob:.1f},{games},{wins},{games-wins},{perc1:.4f},{perc2:.4f}",
+        perc2: float = (games - wins) / game_number
+        tm_elapsed: float = tm_end - tm_start
+        bully_cnt: int = bully.bully_counter
+        rand_cnt: int = bully.rand_counter
+        print(f"{prob:.1f},{games},{wins},{games-wins},{perc1:.4f},{perc2:.4f},{tm_elapsed},{bully_cnt},{rand_cnt}",
               flush=True)
 
 # prj_probs
